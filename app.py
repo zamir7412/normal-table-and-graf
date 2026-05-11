@@ -4,119 +4,97 @@ import matplotlib.pyplot as plt
 from scipy.stats import norm
 import pandas as pd
 
+# הגדרות דף - מצב רחב לחיסכון במקום
 st.set_page_config(page_title="מחשבון התפלגות נורמלית - קלמת", layout="wide")
 
-st.markdown("<h2 style='text-align: center; color: #2E5A88;'>מחשבון התפלגות נורמלית (X) וציוני תקן (Z)</h2>", unsafe_allow_html=True)
+# עיצוב כותרת קטנה יותר
+st.markdown("<h2 style='text-align: center; color: #2E5A88;'>מחשבון התפלגות נורמלית סטנדרטית Z</h2>", unsafe_allow_html=True)
 
-# תפריט לבחירת הנעלם
-col_choice = st.columns([1, 2, 1])
-with col_choice[1]:
-    calc_mode = st.selectbox(
-        "מה ברצונך לחשב?",
-        ["הסתברות/שטח (P)", "ערך (x)", "ממוצע (μ)", "סטיית תקן (σ)"]
-    )
-
-st.divider()
-
+# חלוקה לעמודות: ימין לקלט וחישוב, שמאל לגרף וטבלה
 col_input, col_viz = st.columns([1, 1.3])
 
 with col_input:
-    st.subheader("הזנת נתונים")
-    
-    # לוגיקה להצגת שדות קלט לפי הנעלם שנבחר
-    x = mu = sigma = p_input = None
+    st.subheader("הגדרות וחישוב")
+    mode = st.selectbox(
+        "סוג החישוב:",
+        ["שטח משמאל: P(Z ≤ z)", "שטח מימין: P(Z ≥ z)", "שטח בין ערכים: P(z1 ≤ Z ≤ z2)"]
+    )
 
-    if calc_mode == "הסתברות/שטח (P)":
-        x = st.number_input("ערך (x):", value=110.0, step=0.1)
-        mu = st.number_input("ממוצע (μ):", value=100.0, step=0.1)
-        sigma = st.number_input("סטיית תקן (σ):", value=15.0, step=0.1, min_value=0.01)
-        
-        z = (x - mu) / sigma
-        p_res = norm.cdf(z)
-        
-    elif calc_mode == "ערך (x)":
-        p_input = st.number_input("הסתברות/שטח (0-1 או אחוז):", value=0.8413, step=0.01)
-        if p_input > 1: p_input /= 100 # המרה מאחוז לשבר
-        mu = st.number_input("ממוצע (μ):", value=100.0, step=0.1)
-        sigma = st.number_input("סטיית תקן (σ):", value=15.0, step=0.1, min_value=0.01)
-        
-        z = norm.ppf(p_input)
-        x = mu + z * sigma
-        p_res = p_input
+    if "בין ערכים" in mode:
+        z1 = st.number_input("z1 (נמוך):", value=-1.0, step=0.01, format="%.2f")
+        z2 = st.number_input("z2 (גבוה):", value=1.0, step=0.01, format="%.2f")
+        z_main = z2
+    else:
+        z_main = st.number_input("הזן ערך z:", value=1.25, step=0.01, format="%.2f")
 
-    elif calc_mode == "ממוצע (μ)":
-        x = st.number_input("ערך (x):", value=110.0, step=0.1)
-        p_input = st.number_input("הסתברות/שטח (0-1 או אחוז):", value=0.75, step=0.01)
-        if p_input > 1: p_input /= 100
-        sigma = st.number_input("סטיית תקן (σ):", value=15.0, step=0.1, min_value=0.01)
-        
-        z = norm.ppf(p_input)
-        mu = x - z * sigma
-        p_res = p_input
+    # חישוב ורישום מתמטי
+    if "משמאל" in mode:
+        prob = norm.cdf(z_main)
+        st.latex(rf"P(Z \leq {z_main:.2f}) = \Phi({z_main:.2f}) = {prob:.4f}")
+    elif "מימין" in mode:
+        prob = 1 - norm.cdf(z_main)
+        st.latex(rf"P(Z \geq {z_main:.2f}) = 1 - \Phi({z_main:.2f}) = {prob:.4f}")
+    else:
+        prob = norm.cdf(z2) - norm.cdf(z1)
+        st.latex(rf"P({z1:.2f} \leq Z \leq {z2:.2f}) = \Phi({z2:.2f}) - \Phi({z1:.2f}) = {prob:.4f}")
 
-    elif calc_mode == "סטיית תקן (σ)":
-        x = st.number_input("ערך (x):", value=110.0, step=0.1)
-        mu = st.number_input("ממוצע (μ):", value=100.0, step=0.1)
-        p_input = st.number_input("הסתברות/שטח (0-1 או אחוז):", value=0.75, step=0.01)
-        if p_input > 1: p_input /= 100
-        
-        z = norm.ppf(p_input)
-        if abs(z) < 0.001: 
-            st.error("לא ניתן לחשב סטיית תקן כשהשטח הוא 0.5 (z=0)")
-            sigma = 1
-        else:
-            sigma = (x - mu) / z
-        p_res = p_input
-
-    # הצגת התוצאה והדרך המתמטית
-    st.subheader("תוצאה ודרך פתרון")
-    st.latex(rf"z = \frac{{x - \mu}}{{\sigma}} = \frac{{{x:.2f} - {mu:.2f}}}{{{sigma:.2f}}} = {z:.2f}")
-    st.latex(rf"P(X \leq {x:.2f}) = \Phi({z:.2f}) = {p_res:.4f}")
-    
-    st.success(f"הערך המחושב: **{ (p_res if calc_mode=='הסתברות/שטח (P)' else (x if calc_mode=='ערך (x)' else (mu if calc_mode=='ממוצע (μ)' else sigma))):.4f}**")
+    st.info(f"**הסתברות:** {prob:.4f} | **אחוז:** {prob*100:.2f}%")
 
 with col_viz:
-    # גרף עם ציר X ריאלי
-    fig, ax = plt.subplots(figsize=(7, 3))
-    
-    # טווח הגרף נקבע לפי הממוצע וסטיית התקן (3 סטיות תקן לכל צד)
-    x_axis = np.linspace(mu - 3.5*sigma, mu + 3.5*sigma, 1000)
-    y_axis = norm.pdf(x_axis, mu, sigma)
-    ax.plot(x_axis, y_axis, 'black', lw=1.5)
+    # 2. גרף קומפקטי ללא ציר Y
+    fig, ax = plt.subplots(figsize=(7, 2.5)) 
+    x = np.linspace(-4, 4, 1000)
+    y = norm.pdf(x)
+    ax.plot(x, y, 'black', lw=1.5)
 
-    # צביעת השטח עד X
-    x_fill = np.linspace(mu - 3.5*sigma, x, 500)
-    ax.fill_between(x_fill, norm.pdf(x_fill, mu, sigma), color='#3498db', alpha=0.5)
+    if "משמאל" in mode:
+        x_fill = np.linspace(-4, z_main, 500)
+    elif "מימין" in mode:
+        x_fill = np.linspace(z_main, 4, 500)
+    else:
+        x_fill = np.linspace(z1, z2, 500)
+
+    ax.fill_between(x_fill, norm.pdf(x_fill), color='#3498db', alpha=0.5)
     
-    # עיצוב הגרף
+    # הסרת שנתות ציר Y ושיפור המראה
     ax.set_yticks([])
-    for side in ['left', 'top', 'right']: ax.spines[side].set_visible(False)
-    ax.set_xlabel("ערכי X")
+    ax.set_yticklabels([])
+    for side in ['left', 'top', 'right']:
+        ax.spines[side].set_visible(False)
     
-    # הוספת קו אנכי ב-X
-    ax.axvline(x, color='red', linestyle='--', alpha=0.3)
-    ax.text(x, ax.get_ylim()[1]*0.1, f"x={x:.1f}", ha='center', color='red', fontsize=10)
+    # הוספת אחוז בתוך הגרף
+    ax.text(np.mean(x_fill), 0.02, f"{prob*100:.1f}%", ha='center', fontweight='bold', color='black')
     
+    plt.tight_layout()
     st.pyplot(fig)
 
-    # טבלת Z (תמיד מראה את ה-Z המתאים בטבלה הסטנדרטית)
-    st.write(f"איתור z={z:.2f} בטבלת ההתפלגות:")
-    row_val = np.floor(round(z, 2) * 10) / 10
-    col_val = round(z - row_val, 2)
+    # 3. טבלה ממוזערת עם כותרות נקיות (כמו בתמונה)
+    st.write(f"איתור בטבלה עבור z={z_main:.2f}:")
+    
+    # הכנת נתוני הטבלה
+    row_val = np.floor(round(z_main, 2) * 10) / 10
+    col_val = round(z_main - row_val, 2)
     
     rows = np.around(np.arange(row_val - 0.1, row_val + 0.2, 0.1), 1)
     cols = np.around(np.arange(0.00, 0.10, 0.01), 2)
-    df = pd.DataFrame(index=[f"{r:.1f}" for r in rows], columns=[f"{c:.2f}".replace("0.", ".") for c in cols])
+    
+    # יצירת שמות כותרות נקיים (למשל .05 במקום 0.05)
+    clean_col_names = [f"{c:.2f}".replace("0.", ".") for c in cols]
+    clean_row_names = [f"{r:.1f}" for r in rows]
+    
+    df = pd.DataFrame(index=clean_row_names, columns=clean_col_names)
     
     for r in rows:
         for c in cols:
-            df.loc[f"{r:.1f}", f"{c:.2f}".replace("0.", ".")] = f"{norm.cdf(r + c):.4f}"
+            df.loc[f"{r:.1f}", f"{c:.2f}".replace("0.", ".")] = f"{norm.cdf(r + c if r>=0 else r-c):.4f}"
 
     def highlight(data):
         style = pd.DataFrame('', index=data.index, columns=data.columns)
-        r_str, c_str = f"{row_val:.1f}", f"{col_val:.2f}".replace("0.", ".")
-        if r_str in data.index and c_str in data.columns:
-            style.loc[r_str, c_str] = 'background-color: yellow; font-weight: bold; color: black'
+        target_row = f"{row_val:.1f}"
+        target_col = f"{col_val:.2f}".replace("0.", ".")
+        
+        if target_row in data.index and target_col in data.columns:
+            style.loc[target_row, target_col] = 'background-color: #ffff00; color: black; font-weight: bold; border: 1.5px solid black'
         return style
 
     st.table(df.style.apply(highlight, axis=None))
