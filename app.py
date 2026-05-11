@@ -8,7 +8,7 @@ import pandas as pd
 st.set_page_config(page_title="מחשבון התפלגות נורמלית - קלמת", layout="wide")
 
 # עיצוב כותרת קטנה יותר
-st.markdown("<h2 style='text-align: center; color: #2E5A88;'>מחשבון התפלגות נורמלית סטנדרטית Z</h2>", unsafe_allow_html=True)
+st.markdown("<h2 style='text-align: center; color: #2E5A88;'>מחשבון התפלגות נורמלית. ממוצע 0 סטיית תקן 1 </h2>", unsafe_allow_html=True)
 
 # חלוקה לעמודות: ימין לקלט וחישוב, שמאל לגרף וטבלה
 col_input, col_viz = st.columns([1, 1.3])
