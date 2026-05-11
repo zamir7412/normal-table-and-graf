@@ -11,7 +11,7 @@ st.set_page_config(page_title="מחשבון התפלגות נורמלית - קל
 st.markdown("<h2 style='text-align: center; color: #2E5A88;'>מחשבון התפלגות נורמלית סטנדרטית Z</h2>", unsafe_allow_html=True)
 
 # חלוקה לעמודות: ימין לקלט וחישוב, שמאל לגרף וטבלה
-col_input, col_viz = st.columns([1, 1.2])
+col_input, col_viz = st.columns([1, 1.3])
 
 with col_input:
     st.subheader("הגדרות וחישוב")
@@ -42,7 +42,7 @@ with col_input:
 
 with col_viz:
     # 2. גרף קומפקטי ללא ציר Y
-    fig, ax = plt.subplots(figsize=(7, 2.8)) # גודל מוקטן
+    fig, ax = plt.subplots(figsize=(7, 2.5)) 
     x = np.linspace(-4, 4, 1000)
     y = norm.pdf(x)
     ax.plot(x, y, 'black', lw=1.5)
@@ -56,34 +56,45 @@ with col_viz:
 
     ax.fill_between(x_fill, norm.pdf(x_fill), color='#3498db', alpha=0.5)
     
-    # הסרת שנתות ציר Y
+    # הסרת שנתות ציר Y ושיפור המראה
     ax.set_yticks([])
     ax.set_yticklabels([])
-    ax.spines['left'].set_visible(False)
-    ax.spines['top'].set_visible(False)
-    ax.spines['right'].set_visible(False)
+    for side in ['left', 'top', 'right']:
+        ax.spines[side].set_visible(False)
     
     # הוספת אחוז בתוך הגרף
-    ax.text(np.mean(x_fill), 0.02, f"{prob*100:.1f}%", ha='center', fontweight='bold', color='white')
+    ax.text(np.mean(x_fill), 0.02, f"{prob*100:.1f}%", ha='center', fontweight='bold', color='black')
     
     plt.tight_layout()
     st.pyplot(fig)
 
-    # 3. טבלה ממוזערת
+    # 3. טבלה ממוזערת עם כותרות נקיות (כמו בתמונה)
     st.write(f"איתור בטבלה עבור z={z_main:.2f}:")
+    
+    # הכנת נתוני הטבלה
     row_val = np.floor(round(z_main, 2) * 10) / 10
     col_val = round(z_main - row_val, 2)
     
     rows = np.around(np.arange(row_val - 0.1, row_val + 0.2, 0.1), 1)
-    cols = np.around(np.arange(max(0, col_val - 0.02), min(0.09, col_val + 0.03), 0.01), 2)
-    df = pd.DataFrame(index=rows, columns=[f"{c:.2f}" for c in cols])
+    cols = np.around(np.arange(0.00, 0.10, 0.01), 2)
+    
+    # יצירת שמות כותרות נקיים (למשל .05 במקום 0.05)
+    clean_col_names = [f"{c:.2f}".replace("0.", ".") for c in cols]
+    clean_row_names = [f"{r:.1f}" for r in rows]
+    
+    df = pd.DataFrame(index=clean_row_names, columns=clean_col_names)
+    
     for r in rows:
-        for c in cols: df.loc[r, f"{c:.2f}"] = f"{norm.cdf(r + c):.4f}"
+        for c in cols:
+            df.loc[f"{r:.1f}", f"{c:.2f}".replace("0.", ".")] = f"{norm.cdf(r + c if r>=0 else r-c):.4f}"
 
-    def highlight(x):
-        style = pd.DataFrame('', index=x.index, columns=x.columns)
-        if row_val in x.index and f"{col_val:.2f}" in x.columns:
-            style.loc[row_val, f"{col_val:.2f}"] = 'background-color: yellow; font-weight: bold'
+    def highlight(data):
+        style = pd.DataFrame('', index=data.index, columns=data.columns)
+        target_row = f"{row_val:.1f}"
+        target_col = f"{col_val:.2f}".replace("0.", ".")
+        
+        if target_row in data.index and target_col in data.columns:
+            style.loc[target_row, target_col] = 'background-color: #ffff00; color: black; font-weight: bold; border: 1.5px solid black'
         return style
 
     st.table(df.style.apply(highlight, axis=None))
